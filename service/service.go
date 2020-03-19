@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,28 +15,32 @@ import (
 // Networker is a client implementation for a network.
 type Networker interface {
 	io.Closer
+	Receiver
 	Logout(reason string) error                 // Same as Close() with logout reason.
 	Start(ctx context.Context, id string) error // id = request id
 	NetworkID() string
 	ConnID() string // empty if no connections.
 	Context() context.Context
 	Closed() bool
-	Handler(tp Transporter, msg *stdchat.ChatMsg)
-	CmdHandler(tp Transporter, msg *stdchat.CmdMsg)
 	GetStateInfo() ClientStateInfo
 }
 
+// Servicer represents a service.
 type Servicer interface {
 	io.Closer
-	Transporter() Transporter
+	Receiver
 	GetClients() []Networker
 	GetClientByNetwork(networkID string) Networker
 	Protocol() string
 	Context() context.Context
 	Closed() bool
-	Handler(tp Transporter, msg *stdchat.ChatMsg)
-	CmdHandler(tp Transporter, msg *stdchat.CmdMsg)
 	GetStateInfo() ServiceStateInfo
+}
+
+// Receiver can receive input messages and commands.
+type Receiver interface {
+	Handler(msg *stdchat.ChatMsg)
+	CmdHandler(msg *stdchat.CmdMsg)
 }
 
 type NewClientFunc = func(svc *Service, remote, userID, auth string, values stdchat.ValuesInfo) (Networker, error)
@@ -255,7 +260,7 @@ func (svc *Service) cmdLogout(logoutID, reason string, msg *stdchat.CmdMsg) {
 	}
 }
 
-func (svc *Service) CmdHandler(tp Transporter, msg *stdchat.CmdMsg) {
+func (svc *Service) CmdHandler(msg *stdchat.CmdMsg) {
 	// Forward to network if network ID present.
 	if msg.Network.ID != "" {
 		client := svc.GetClientByNetwork(msg.Network.ID)
@@ -263,7 +268,7 @@ func (svc *Service) CmdHandler(tp Transporter, msg *stdchat.CmdMsg) {
 			svc.tp.PublishError(MakeID(msg.ID), "",
 				errors.New("network not found: "+msg.Network.ID))
 		} else {
-			client.CmdHandler(tp, msg)
+			client.CmdHandler(msg)
 		}
 		return
 	}
@@ -294,7 +299,7 @@ func (svc *Service) CmdHandler(tp Transporter, msg *stdchat.CmdMsg) {
 	}
 }
 
-func (svc *Service) Handler(tp Transporter, msg *stdchat.ChatMsg) {
+func (svc *Service) Handler(msg *stdchat.ChatMsg) {
 	if msg.Type == "" || msg.Network.ID == "" {
 		svc.tp.PublishError(MakeID(msg.ID), "",
 			errors.New("invalid message"))
@@ -304,7 +309,7 @@ func (svc *Service) Handler(tp Transporter, msg *stdchat.ChatMsg) {
 			svc.tp.PublishError(MakeID(msg.ID), "",
 				errors.New("network not found: "+msg.Network.ID))
 		} else {
-			client.Handler(tp, msg)
+			client.Handler(msg)
 		}
 	}
 }
@@ -330,4 +335,28 @@ func (svc *Service) GetStateInfo() ServiceStateInfo {
 		msg.Subscriptions = append(msg.Subscriptions, cstate.Subscriptions...)
 	}
 	return msg
+}
+
+// DispatchMsg dispatches a raw input message to the receiver (service)
+func DispatchMsg(rcv Receiver, rawMsg []byte) error {
+	if bytes.Index(rawMsg, []byte(`"cmd`)) != -1 {
+		msg := &stdchat.CmdMsg{}
+		err := stdchat.JSON.Unmarshal(rawMsg, msg)
+		if err != nil {
+			return err
+		}
+		if msg.IsType("cmd") {
+			rcv.CmdHandler(msg)
+			return nil
+		}
+		// Not cmd, must have found it elsewhere in the payload.
+		// Continue to load as ChatMsg...
+	}
+	msg := &stdchat.ChatMsg{}
+	err := stdchat.JSON.Unmarshal(rawMsg, msg)
+	if err != nil {
+		return err
+	}
+	rcv.Handler(msg)
+	return nil
 }
