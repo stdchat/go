@@ -29,6 +29,7 @@ type Networker interface {
 type Servicer interface {
 	io.Closer
 	Receiver
+	GenericError(err error) // An error from outside, such as during msg dispatch.
 	GetClients() []Networker
 	GetClientByNetwork(networkID string) Networker
 	Protocol() string
@@ -82,6 +83,10 @@ func (svc *Service) Protocol() string {
 
 func (svc *Service) Transporter() Transporter {
 	return svc.tp
+}
+
+func (svc *Service) GenericError(err error) {
+	svc.tp.PublishError("", "", err)
 }
 
 func (svc *Service) GetClients() []Networker {
