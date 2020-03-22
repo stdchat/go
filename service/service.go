@@ -346,7 +346,7 @@ func (svc *Service) GetStateInfo() ServiceStateInfo {
 func DispatchMsg(rcv Receiver, rawMsg []byte) error {
 	if bytes.Index(rawMsg, []byte(`"cmd`)) != -1 {
 		msg := &stdchat.CmdMsg{}
-		err := stdchat.JSON.Unmarshal(rawMsg, msg)
+		err := stdchat.DecodeMsg(rawMsg, msg)
 		if err != nil {
 			return err
 		}
@@ -358,7 +358,7 @@ func DispatchMsg(rcv Receiver, rawMsg []byte) error {
 		// Continue to load as ChatMsg...
 	}
 	msg := &stdchat.ChatMsg{}
-	err := stdchat.JSON.Unmarshal(rawMsg, msg)
+	err := stdchat.DecodeMsg(rawMsg, msg)
 	if err != nil {
 		return err
 	}

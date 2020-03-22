@@ -5,7 +5,7 @@ import "errors"
 // ParseBaseMsg parses rawMsg JSON into a specific base msg type.
 func ParseBaseMsg(rawMsg []byte) (BaseMsger, error) {
 	msg := &ChatMsg{}
-	err := json.Unmarshal(rawMsg, msg)
+	err := DecodeMsg(rawMsg, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func ParseBaseMsg(rawMsg []byte) (BaseMsger, error) {
 }
 
 func reparseBaseMsg(msg BaseMsger, rawMsg []byte) (BaseMsger, error) {
-	err := json.Unmarshal(rawMsg, msg)
+	err := DecodeMsg(rawMsg, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -49,4 +49,33 @@ func reparseBaseMsg(msg BaseMsger, rawMsg []byte) (BaseMsger, error) {
 		return msg, errors.New("not a valid message")
 	}
 	return msg, nil
+}
+
+// EncodeMsg encodes msg into JSON bytes.
+func EncodeMsg(msg interface{}) ([]byte, error) {
+	return JSON.Marshal(msg)
+}
+
+type DecodeMsgError struct {
+	msg  string
+	base error
+}
+
+func (err *DecodeMsgError) Unwrap() error {
+	return err.base
+}
+
+func (err *DecodeMsgError) Error() string {
+	return err.msg
+}
+
+// DecodeMsg decodes rawMsg bytes into v.
+// Error returned will be of type DecodeMsgError,
+// use Unwrap to get the error from the JSON unmarshaller.
+func DecodeMsg(rawMsg []byte, v interface{}) error {
+	err := JSON.Unmarshal(rawMsg, v)
+	if err != nil {
+		return &DecodeMsgError{"message load error", err}
+	}
+	return nil
 }
