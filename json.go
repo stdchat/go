@@ -31,8 +31,7 @@ type timeOmitZero struct {
 }
 
 func (codec *timeOmitZero) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-	var t time.Time
-	err := t.UnmarshalJSON(iter.ReadStringAsSlice())
+	t, err := time.Parse(time.RFC3339, iter.ReadString())
 	if err != nil {
 		iter.ReportError("unmarshal", err.Error())
 		return
