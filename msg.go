@@ -147,7 +147,7 @@ type LeaveMsg struct {
 
 // UserChangedMsg is a msg about a user changing.
 type UserChangedMsg struct {
-	ChatMsg
+	NetMsg
 	User   EntityInfo `json:"user"` // the user who changed.
 	Info   UserInfo   `json:"info"` // the changes.
 	Myself bool       `json:"myself,omitempty"`

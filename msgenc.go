@@ -2,6 +2,8 @@ package stdchat
 
 import "errors"
 
+var ErrInvalidMsg = errors.New("not a valid message")
+
 // ParseBaseMsg parses rawMsg JSON into a specific base msg type.
 func ParseBaseMsg(rawMsg []byte) (BaseMsger, error) {
 	msg := &ChatMsg{}
@@ -36,7 +38,7 @@ func ParseBaseMsg(rawMsg []byte) (BaseMsger, error) {
 			}
 			return &msg.BaseMsg, nil
 		}
-		return msg, errors.New("not a valid message")
+		return msg, ErrInvalidMsg
 	}
 }
 
@@ -46,7 +48,7 @@ func reparseBaseMsg(msg BaseMsger, rawMsg []byte) (BaseMsger, error) {
 		return nil, err
 	}
 	if !msg.IsMsg() {
-		return msg, errors.New("not a valid message")
+		return msg, ErrInvalidMsg
 	}
 	return msg, nil
 }
