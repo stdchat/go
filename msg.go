@@ -197,7 +197,7 @@ const (
 	ConnectFailed ConnState = "failed"
 )
 
-// ConnMsg is a msg on a connection; also used for network online/offline.
+// ConnMsg is a msg for a connection.
 // An implementation is not required to use all the ConnState values,
 // but at least Connected and Disconnected are needed.
 // Note: the value of Cause may change or may be removed completely!
@@ -212,4 +212,68 @@ func (msg *ConnMsg) Init(id, typ, protocol, netID string, connID string, state C
 	msg.NetMsg.Init(id, typ, protocol, netID)
 	msg.Connection.Init(connID, "conn")
 	msg.State = state
+}
+
+type unknownStateEntry struct {
+	Type     string `json:"type"`
+	Protocol string `json:"proto"`
+}
+
+func (x unknownStateEntry) GetType() string {
+	return x.Type
+}
+
+func (x unknownStateEntry) GetProtocol() string {
+	return x.Protocol
+}
+
+func (x unknownStateEntry) String() string {
+	return "unknown state: " + x.Type
+}
+
+type StateEntry struct {
+	Statuser
+}
+
+func (se StateEntry) MarshalJSON() ([]byte, error) {
+	return json.Marshal(se.Statuser)
+}
+
+func (se StateEntry) UnmarshalJSON(data []byte) error {
+	var x unknownStateEntry
+	err := json.Unmarshal(data, &x)
+	if err != nil {
+		return err
+	}
+	switch x.Type {
+	case "proto-state":
+		var x ProtocolStateInfo
+		err = json.Unmarshal(data, &x)
+		if err != nil {
+			return err
+		}
+		se.Statuser = &x
+	case "network-state":
+		var x NetworkStateInfo
+		err = json.Unmarshal(data, &x)
+		if err != nil {
+			return err
+		}
+		se.Statuser = &x
+	case "subscription-state":
+		var x SubscriptionStateInfo
+		err = json.Unmarshal(data, &x)
+		if err != nil {
+			return err
+		}
+		se.Statuser = &x
+	default: // Rather than error, just silently produce an unknown state:
+		se.Statuser = x
+	}
+	return nil
+}
+
+type StateMsg struct {
+	BaseMsg              // The protocol is empty.
+	List    []StateEntry `json:"list"`
 }

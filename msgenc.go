@@ -26,6 +26,8 @@ func ParseBaseMsg(rawMsg []byte) (BaseMsger, error) {
 		return reparseBaseMsg(&TypingMsg{}, rawMsg)
 	case msg.IsType("conn-state"):
 		return reparseBaseMsg(&ConnMsg{}, rawMsg)
+	case msg.IsType("state"):
+		return reparseBaseMsg(&StateMsg{}, rawMsg)
 	case msg.IsType("cmd"):
 		return reparseBaseMsg(&CmdMsg{}, rawMsg)
 	default: // Default rules:

@@ -298,6 +298,20 @@ func (svc *Service) CmdHandler(msg *stdchat.CmdMsg) {
 			outmsg.Message.SetText(msg.Args[0])
 		}
 		svc.tp.Publish("", "", "other", outmsg)
+	case "get-state":
+		outmsg := &stdchat.StateMsg{}
+		outmsg.Init(MakeID(msg.ID), "state", "") // no protocol
+		stateInfo := svc.GetStateInfo()
+		outmsg.List = append(outmsg.List, stdchat.StateEntry{Statuser: &stateInfo.Protocol})
+		for i := range stateInfo.Networks {
+			netState := &stateInfo.Networks[i]
+			outmsg.List = append(outmsg.List, stdchat.StateEntry{Statuser: netState})
+		}
+		for i := range stateInfo.Subscriptions {
+			subState := &stateInfo.Subscriptions[i]
+			outmsg.List = append(outmsg.List, stdchat.StateEntry{Statuser: subState})
+		}
+		svc.tp.Publish("", "", "state", outmsg)
 	default:
 		svc.tp.PublishError(msg.ID, msg.Network.ID,
 			errors.New("unhandled command: "+msg.Command))

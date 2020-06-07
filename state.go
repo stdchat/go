@@ -1,10 +1,5 @@
 package stdchat
 
-import (
-	"bytes"
-	"errors"
-)
-
 // Statuser has status info.
 type Statuser interface {
 	GetType() string
@@ -16,7 +11,6 @@ type Statuser interface {
 type ProtocolStateInfo struct {
 	TypeInfo            // proto-state
 	Protocol string     `json:"proto"`
-	Online   alwaysTrue `json:"online"`
 	Values   ValuesInfo `json:"values,omitempty"`
 }
 
@@ -26,23 +20,6 @@ func (x ProtocolStateInfo) GetProtocol() string {
 
 func (x ProtocolStateInfo) String() string {
 	return "Protocol: " + x.Protocol
-}
-
-type alwaysTrue struct{}
-
-func (alwaysTrue) Bool() bool {
-	return true
-}
-
-func (alwaysTrue) MarshalJSON() ([]byte, error) {
-	return []byte("true"), nil
-}
-
-func (alwaysTrue) UnmarshalJSON(b []byte) error {
-	if !bytes.Equal(b, []byte("true")) {
-		return errors.New("expected true")
-	}
-	return nil
 }
 
 // NetworkStateInfo is network state information.
